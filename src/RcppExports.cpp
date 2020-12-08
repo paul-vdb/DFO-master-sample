@@ -7,7 +7,7 @@ using namespace Rcpp;
 
 // log_b
 double log_b(double x, int& base);
-RcppExport SEXP _MSampNZ_log_b(SEXP xSEXP, SEXP baseSEXP) {
+RcppExport SEXP _BASMasterSample_log_b(SEXP xSEXP, SEXP baseSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::traits::input_parameter< double >::type x(xSEXP);
@@ -18,7 +18,7 @@ END_RCPP
 }
 // HaltonSeq
 NumericVector HaltonSeq(const int& k, double& base, int& n);
-RcppExport SEXP _MSampNZ_HaltonSeq(SEXP kSEXP, SEXP baseSEXP, SEXP nSEXP) {
+RcppExport SEXP _BASMasterSample_HaltonSeq(SEXP kSEXP, SEXP baseSEXP, SEXP nSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::traits::input_parameter< const int& >::type k(kSEXP);
@@ -30,7 +30,7 @@ END_RCPP
 }
 // GetBoxIndices
 NumericMatrix GetBoxIndices(NumericMatrix& lxy, IntegerVector& base, IntegerVector J);
-RcppExport SEXP _MSampNZ_GetBoxIndices(SEXP lxySEXP, SEXP baseSEXP, SEXP JSEXP) {
+RcppExport SEXP _BASMasterSample_GetBoxIndices(SEXP lxySEXP, SEXP baseSEXP, SEXP JSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::traits::input_parameter< NumericMatrix& >::type lxy(lxySEXP);
@@ -42,7 +42,7 @@ END_RCPP
 }
 // SolveCongruence
 NumericVector SolveCongruence(NumericMatrix& A, NumericVector& base, NumericVector J);
-RcppExport SEXP _MSampNZ_SolveCongruence(SEXP ASEXP, SEXP baseSEXP, SEXP JSEXP) {
+RcppExport SEXP _BASMasterSample_SolveCongruence(SEXP ASEXP, SEXP baseSEXP, SEXP JSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::traits::input_parameter< NumericMatrix& >::type A(ASEXP);
@@ -54,14 +54,14 @@ END_RCPP
 }
 
 static const R_CallMethodDef CallEntries[] = {
-    {"_MSampNZ_log_b", (DL_FUNC) &_MSampNZ_log_b, 2},
-    {"_MSampNZ_HaltonSeq", (DL_FUNC) &_MSampNZ_HaltonSeq, 3},
-    {"_MSampNZ_GetBoxIndices", (DL_FUNC) &_MSampNZ_GetBoxIndices, 3},
-    {"_MSampNZ_SolveCongruence", (DL_FUNC) &_MSampNZ_SolveCongruence, 3},
+    {"_BASMasterSample_log_b", (DL_FUNC) &_BASMasterSample_log_b, 2},
+    {"_BASMasterSample_HaltonSeq", (DL_FUNC) &_BASMasterSample_HaltonSeq, 3},
+    {"_BASMasterSample_GetBoxIndices", (DL_FUNC) &_BASMasterSample_GetBoxIndices, 3},
+    {"_BASMasterSample_SolveCongruence", (DL_FUNC) &_BASMasterSample_SolveCongruence, 3},
     {NULL, NULL, 0}
 };
 
-RcppExport void R_init_MSampNZ(DllInfo *dll) {
+RcppExport void R_init_BASMasterSample(DllInfo *dll) {
     R_registerRoutines(dll, NULL, CallEntries, NULL, NULL);
     R_useDynamicSymbols(dll, FALSE);
 }
