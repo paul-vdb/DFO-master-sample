@@ -1,0 +1,20 @@
+Package: BASMasterSample
+Title: Western Canada Marine Master Sample
+Version: 1.0
+Date: 2020-12-08
+Author: Paul van Dam-Bates
+Maintainer: Paul van Dam-Bates <paul.vandambates@gmail.com>
+Description: Selects Master Sample Points for the Exclusive Economic Zone of Western Canada.
+License: GPL (>= 2)
+RoxygenNote: 7.1.1
+Imports: raster,
+    rgdal,
+    sp,
+    rgeos,
+	Rcpp
+LinkingTo: Rcpp
+LazyData: true
+NeedsCompilation: yes
+Archs: i386, x64
+Encoding: UTF-8
+
