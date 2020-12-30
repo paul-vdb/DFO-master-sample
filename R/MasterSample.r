@@ -16,6 +16,13 @@
 #' @import raster
 NULL
 
+## usethis namespace: start
+#' @useDynLib BASMasterSample, .registration = TRUE
+#' @importFrom Rcpp sourceCpp
+## usethis namespace: end
+NULL
+
+
 #' @export
 #Halton Sequence:
 RSHalton <- function(n = 10, seeds = c(0,0),bases = c(2,3), boxes = 0, J = c(0,0)) {
@@ -98,10 +105,10 @@ shape2Frame <- function(shp, bb = NULL, base = c(2,3), J = c(2,2), projstring = 
   }else{ return("Define Bounding Box Please.")}
 
   if( is.null( projstring)) {
-	projstring <- getProj(island = "South")
-	cat("Assuming NZTM Projection\n")
+	projstring <- getProj()
+	cat("Assuming Projection\n")
 	}
-  if(proj4string(shp) != projstring) shp <- spTransform(shp, projstring)
+  if(crs(shp)@projargs != projstring) shp <- spTransform(shp, projstring)
 
   #Stretch bounding box to Halton Frame Size:
   bb2 <- bbox(shp)
@@ -139,7 +146,9 @@ where2Start <- function(J = c(1,1), seeds = c(0,0), bases = c(2,3), boxes = NULL
 #' @export
 getProj <- function()
 {	#BC Albers
-	return("+proj=aea +lat_1=50 +lat_2=58.5 +lat_0=45 +lon_0=-126 +x_0=1000000 +y_0=0 +ellps=GRS80 +datum=NAD83 +units=m +no_defs")
+    #http://spatialreference.org/ref/epsg/3005/
+    msproj <- "+proj=aea +lat_1=50 +lat_2=58.5 +lat_0=45 +lon_0=-126 +x_0=1000000 +y_0=0 +ellps=GRS80 +datum=NAD83 +units=m +no_defs"
+	return(msproj)
 }
 
 
@@ -149,7 +158,7 @@ getProj <- function()
 #' @export
 getBB <- function()
 {
-  bb <- data.frame(min = c(85148,1280999), max = c(33745,1351981), row.names = c("x","y"))
+  bb <- data.frame(min = c(85148,33745), max = c(1280999,1351981), row.names = c("x","y")) 
   return(bb)
 }
 
@@ -177,7 +186,11 @@ masterSample <- function(shp, N = 100, msproj = NULL, bb = NULL, seed = NULL){
   if(is.null(bb)) bb <- getBB()
   if(is.null(seed)) seed <- getSeed()
   
-  if(proj4string(shp) != msproj) shp <- spTransform(shp, msproj)
+  if(crs(shp)@projargs != msproj) 
+  {
+	orig.crs <- crs(shp)@projargs
+	shp <- spTransform(shp, msproj)
+  }
   
   #Scale and shift Halton to fit into bounding box
   scale.bas <- bb[,2] - bb[,1]
@@ -219,7 +232,7 @@ masterSample <- function(shp, N = 100, msproj = NULL, bb = NULL, seed = NULL){
     pts <- RSHalton(n = draw, seeds = seedshift, bases = c(2,3), boxes = halt.rep, J = J)
     pts[,2] <- pts[,2]*scale.bas[1] + shift.bas[1]
     pts[,3] <- pts[,3]*scale.bas[2] + shift.bas[2]
-    pts.coord <- SpatialPointsDataFrame(cbind(pts[,2],pts[,3]),proj4string=CRS(nztm), data.frame(SiteID = paste0(island, pts[,1] + endPoint), Count = pts[,1] + endPoint))
+    pts.coord <- SpatialPointsDataFrame(cbind(pts[,2],pts[,3]),proj4string=CRS(msproj), data.frame(SiteID = paste0(pts[,1] + endPoint)))
     indx <- gIntersects(shp, pts.coord, byid = TRUE)
     pts.coord <- pts.coord[rowSums(indx) > 0,]
     return(pts.coord)
@@ -238,8 +251,13 @@ masterSample <- function(shp, N = 100, msproj = NULL, bb = NULL, seed = NULL){
     if(nrow(new.pts) > 0) pts.sample <- rbind(pts.sample, new.pts)
     di <- di + 1
   }
-
-  return(pts.sample[1:N,])
+	
+  smp <- pts.sample[1:N,]
+  if(orig.crs != msproj) 
+  {
+	smp <- spTransform(smp, orig.crs)
+  }  
+  return(smp)
 }
 
 #############

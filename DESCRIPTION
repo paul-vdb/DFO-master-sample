@@ -11,9 +11,12 @@ Imports: raster,
     rgdal,
     sp,
     rgeos,
+	sf,
 	Rcpp
 LinkingTo: Rcpp
 LazyData: true
 NeedsCompilation: yes
 Archs: i386, x64
 Encoding: UTF-8
+Depends: 
+    R (>= 2.10)

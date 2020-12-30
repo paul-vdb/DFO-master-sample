@@ -3,7 +3,7 @@
 
 #' Internal function for log base b, since it isn't obvious in C++.
 log_b <- function(x, base) {
-    .Call('_BASMasterSample_log_b', PACKAGE = 'BASMasterSample', x, base)
+    .Call(`_BASMasterSample_log_b`, x, base)
 }
 
 #' Draw Halton Sequence values for a single dimension.
@@ -18,7 +18,7 @@ log_b <- function(x, base) {
 #' HaltonSeq(k = 0, base = 2, n = 10)
 #'
 HaltonSeq <- function(k, base, n) {
-    .Call('_BASMasterSample_HaltonSeq', PACKAGE = 'BASMasterSample', k, base, n)
+    .Call(`_BASMasterSample_HaltonSeq`, k, base, n)
 }
 
 #' Fast Implementation of finding x and y order numbers to feed into the linear congruence equation.
@@ -32,7 +32,7 @@ HaltonSeq <- function(k, base, n) {
 #'
 #'
 GetBoxIndices <- function(lxy, base, J) {
-    .Call('_BASMasterSample_GetBoxIndices', PACKAGE = 'BASMasterSample', lxy, base, J)
+    .Call(`_BASMasterSample_GetBoxIndices`, lxy, base, J)
 }
 
 #' Solve system of linear congruence from HIP paper to order HIP boxes.
@@ -46,6 +46,6 @@ GetBoxIndices <- function(lxy, base, J) {
 #'
 #'
 SolveCongruence <- function(A, base, J) {
-    .Call('_BASMasterSample_SolveCongruence', PACKAGE = 'BASMasterSample', A, base, J)
+    .Call(`_BASMasterSample_SolveCongruence`, A, base, J)
 }
 
