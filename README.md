@@ -6,12 +6,17 @@ purposes.
 
 # Example:
 devtools::install_github("paul-vdb/DFO-master-sample")
+
 library(BASMasterSample)
 
 library(sf)
+
 library(sp)
 
 data(Fed_MPAs_clipped)
+
 fed.sp <- as_Spatial(Fed_MPAs_clipped)
+
 smp <- masterSample(fed.sp, N = 100)
+
 plot(smp)
