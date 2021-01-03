@@ -4,7 +4,14 @@
 \alias{masterSample}
 \title{Generate sample points using BAS master sample}
 \usage{
-masterSample(shp, N = 100, msproj = NULL, bb = NULL, seed = NULL)
+masterSample(
+  shp,
+  N = 100,
+  msproj = NULL,
+  bb = NULL,
+  seed = NULL,
+  nExtra = 5000
+)
 }
 \description{
 Generates BAS sample points in a specified sample frame based on New Zealand terrestrial mastersample. Users need to specify 'island' the sample frame is in and how many points are required.

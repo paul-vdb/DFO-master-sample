@@ -4,7 +4,14 @@
 \alias{shape2Frame}
 \title{Wrap a Halton Frame over the sample shape}
 \usage{
-shape2Frame(shp, bb = NULL, base = c(2, 3), J = c(2, 2), projstring = NULL)
+shape2Frame(
+  shp,
+  bb = NULL,
+  base = c(2, 3),
+  J = c(2, 2),
+  projstring = NULL,
+  rotate = NULL
+)
 }
 \description{
 Wrap a Halton Frame over the sample shape

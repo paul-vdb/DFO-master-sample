@@ -4,7 +4,7 @@
 \alias{makeFrame}
 \title{Make a Halton grid over the bounding box}
 \usage{
-makeFrame(base = c(2, 3), J = c(2, 2), bb)
+makeFrame(base = c(2, 3), J = c(2, 2), bb, rotate = NULL)
 }
 \description{
 Make a Halton grid over the bounding box

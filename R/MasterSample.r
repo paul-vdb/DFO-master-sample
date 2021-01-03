@@ -10,6 +10,7 @@
 
 #' @import raster
 #' @import sp
+#' @import sf
 #' @import rgeos
 #' @import Rcpp
 #' @import rgdal
@@ -61,6 +62,66 @@ RSHalton <- function(n = 10, seeds = c(0,0),bases = c(2,3), boxes = 0, J = c(0,0
   return(pts)
 }
 
+
+#' @export
+rot <- function(a) 
+{
+		matrix(c(cos(a), sin(a), -sin(a), cos(a)), 2, 2)
+}
+
+#' @export
+rotate.bb <- function(shp, theta)
+{	
+	if(any(class(shp) == "sf"))
+	{
+		bb <- st_as_sfc(st_bbox(shp))
+	}else if(attr(class(shp), "package") != "sp")
+	{
+		shp <-  st_as_sf(shp)
+	}
+	cntrd <- st_centroid(bb)
+	bb.rot <- (bb - cntrd) * rot(theta) + cntrd
+	bb.new <- st_as_sfc(st_bbox(bb.rot))
+
+	attr(bb.new, "rotation") = theta
+	attr(bb.new, "centroid") = cntrd
+	return(bb.new)
+}
+
+# Give random points on the unit square and map to rotated bounding box.
+#' @export
+rotate.scale.coords <- function(coords, bb, back = TRUE)
+{	
+	coords <- pts[,2:3]
+	theta <- ifelse(back, -1, 1) * attr(bb, "rotation")	# Rotate backwards
+	cntrd <- attr(bb, "centroid")
+
+	bb.bounds <- st_bbox(bb)
+	bb.scale <- diag(2) * (bb.bounds[3:4] - bb.bounds[1:2])
+	
+	coords <- st_multipoint(coords, dim = "XY") %>% st_geometry()
+	coords.scale <- coords*bb.scale + bb.bounds[1:2]
+	coords.rot <- (coords.scale - cntrd) * rot(theta) + cntrd
+
+	st_crs(coords.rot) <- st_crs(bb)
+	return(coords.rot)
+}
+
+# Give random points on the unit square and map to rotated bounding box.
+#' @export
+rotate.poly <- function(shp, bb, back = TRUE)
+{	
+	theta <- ifelse(back, -1, 1) * attr(bb, "rotation")	# Rotate backwards
+	cntrd <- attr(bb, "centroid")
+
+	shp <- st_transform(shp, st_crs(bb))
+	shp <- st_geometry(shp)
+	shp.rot <- (shp - cntrd) * rot(theta) + cntrd
+	st_crs(shp.rot) <- st_crs(bb)
+	return(shp.rot)
+}
+
+
 #' @export
 #Solve Congruence to get order of boxes:
 systemCong <- function(L = c(1/4, 1/3), J = c(2,2), base = c(2,3))
@@ -84,46 +145,55 @@ systemCong <- function(L = c(1/4, 1/3), J = c(2,2), base = c(2,3))
 #' @title Make a Halton grid over the bounding box
 #' @export
 #Create a Halton Grid over the Bounding Box
-makeFrame <- function(base = c(2,3), J = c(2,2), bb)
+makeFrame <- function(base = c(2,3), J = c(2,2), bb, rotate = NULL)
 {
+  b.bounds <- st_bbox(bb)
   B <- prod(base^J)
-  halt.grid <- raster(extent(as.matrix( bb )), nrow=base[2]^J[2], ncol=base[1]^J[1])
+  halt.grid <- raster(extent(matrix( b.bounds, 2, 2 )), nrow=base[2]^J[2], ncol=base[1]^J[1])
   halt.grid <- rasterToPolygons(halt.grid)
-  return(halt.grid)
+  projection(halt.grid) <- st_crs(bb)$proj4string
+  if(!is.null(rotate)) return(rotate.poly(st_as_sf(halt.grid), bb))
+  return(st_as_sf(halt.grid))
 }
 
 # Wrap a Halton Frame over the sample Shape.
 #' @name shape2Frame
 #' @title Wrap a Halton Frame over the sample shape
 #' @export
-shape2Frame <- function(shp, bb = NULL, base = c(2,3), J = c(2,2), projstring = NULL)
+shape2Frame <- function(shp, bb = NULL, base = c(2,3), J = c(2,2), projstring = NULL, rotate = NULL)
 {
   if( !is.null( bb))
   {
-    scale.bas <- bb[,2] - bb[,1]
-    shift.bas <- bb[,1]
+	bb.bounds <- st_bbox(bb)
+	scale.bas <- bb.bounds[3:4] - bb.bounds[1:2]
+	shift.bas <- bb.bounds[1:2]
+	theta <- attr(bb, "rotation")
+	cntrd <- attr(bb, "centroid")
   }else{ return("Define Bounding Box Please.")}
 
   if( is.null( projstring)) {
 	projstring <- getProj()
 	cat("Assuming Projection\n")
 	}
-  if(crs(shp)@projargs != projstring) shp <- spTransform(shp, projstring)
+  if(st_crs(shp) != st_crs(projstring)) shp <- st_transform(shp, projstring)
 
   #Stretch bounding box to Halton Frame Size:
-  bb2 <- bbox(shp)
-  xy <- (bb2 - shift.bas)/scale.bas
-  lx <- floor(xy[1,1] / (1/base[1]^J[1]))/(base[1]^J[1])
-  ly <- floor(xy[2,1] / (1/base[2]^J[2]))/(base[2]^J[2])
-  ux <- ceiling(xy[1,2] /(1/base[1]^J[1]))/(base[1]^J[1])
-  uy <- ceiling(xy[2,2] /(1/base[2]^J[2]))/(base[2]^J[2])
+  shp2 <- rotate.poly(shp, bb, back = FALSE)
+  bb2 <- st_bbox(shp)
+  xy <- (bb2 - shift.bas[c(1,2,1,2)])/scale.bas[c(1,2,1,2)]
+  lx <- floor(xy[1] / (1/base[1]^J[1]))/(base[1]^J[1])
+  ly <- floor(xy[2] / (1/base[2]^J[2]))/(base[2]^J[2])
+  ux <- ceiling(xy[3] /(1/base[1]^J[1]))/(base[1]^J[1])
+  uy <- ceiling(xy[4] /(1/base[2]^J[2]))/(base[2]^J[2])
   nx <- (ux-lx)*base[1]^J[1]
   ny <- (uy-ly)*base[2]^J[2]
 
-  bb.new <- data.frame(min = c(lx, ly), max = c(ux, uy), row.names = c("x","y"))
-  halt.frame <- raster(extent(as.matrix( bb.new*scale.bas + shift.bas )), nrow=ny, ncol=nx)
+  bb.new <- c(lx,ly, ux, uy)*scale.bas[c(1,2,1,2)] + shift.bas[c(1,2,1,2)]
+  halt.frame <- raster(extent(matrix( bb.new , 2, 2)), nrow=ny, ncol=nx)
   projection(halt.frame) <- projstring
   halt.poly <- rasterToPolygons(halt.frame)
+  if(!is.null(rotate)) return(rotate.poly(st_as_sf(halt.poly), bb))
+  return(st_as_sfc(halt.poly))
 }
 
 
@@ -158,7 +228,13 @@ getProj <- function()
 #' @export
 getBB <- function()
 {
-  bb <- data.frame(min = c(85148,33745), max = c(1280999,1351981), row.names = c("x","y")) 
+  bb.df <- c("xmin" = 85148, "ymin" = 33745, "xmax" = 1280999, "ymax" = 1351981)
+  bb <- st_as_sfc(st_bbox(bb.df))
+
+  attr(bb, "rotation") = 0
+  attr(bb, "centroid") = st_centroid(bb)  
+  
+  st_crs(bb) <- st_crs(getProj())
   return(bb)
 }
 
@@ -172,53 +248,71 @@ getSeed <- function()
   return(seed)
 }
 
+getRotation <- function()
+{
+  return(0)
+}
+
+
 #' @name masterSample
 #' @title Generate sample points using BAS master sample
 #' @description Generates BAS sample points in a specified sample frame based on New Zealand terrestrial mastersample. Users need to specify 'island' the sample frame is in and how many points are required.
 #' @export
-masterSample <- function(shp, N = 100, msproj = NULL, bb = NULL, seed = NULL){
+masterSample <- function(shp, N = 100, msproj = NULL, bb = NULL, seed = NULL, nExtra = 5000){
   
   # We always use base 2,3
   base <- c(2,3)
 
+  # Updating to work for sf only. Start here...
+  if (class(shp)[1] != "sf") 
+  {
+    shp <-  st_as_sf(shp)
+  }
+
   # Set up Western Canada Marine Master Sample as default, general for any.
+  # bb now includes its rotation as well.
   if(is.null(msproj)) msproj <- getProj()
   if(is.null(bb)) bb <- getBB()
   if(is.null(seed)) seed <- getSeed()
   
-  if(crs(shp)@projargs != msproj) 
+  if(st_crs(shp) != st_crs(msproj)) 
   {
-	orig.crs <- crs(shp)@projargs
-	shp <- spTransform(shp, msproj)
+	orig.crs <- st_crs(shp)$proj4string
+	shp <- st_transform(shp, msproj)
   }
   
   #Scale and shift Halton to fit into bounding box
-  scale.bas <- bb[,2] - bb[,1]
-  shift.bas <- bb[,1]
+  bb.bounds <- st_bbox(bb)
+  scale.bas <- bb.bounds[3:4] - bb.bounds[1:2]
+  shift.bas <- bb.bounds[1:2]
+
+  cntrd <- attr(bb, "centroid")
+  cntrd.vec <- st_coordinates(cntrd)
+  theta <- attr(bb, "rotation")
 
   #We can use Halton Boxes to speed up code when the polygons are small and all over the place.
   #Kind of like magic!
-  draw <- N + 5000
+  draw <- N + nExtra
   
   J <- c(0, 0)
   hal.frame <- shape2Frame(shp, J = J, bb = bb, projstring = msproj)
-  area.shp <- sum(raster::area(shp))
-  while(area.shp < 0.25*raster::area(hal.frame)[1])	# Subset again:
+  area.shp <- as.numeric(sum(st_area(shp)))
+  while(area.shp < 0.25*as.numeric(st_area(hal.frame))[1])	# Subset again:
   {
 	if(base[2]^J[2] > base[1]^J[1]){ 
 		J[1] <- J[1] + 1
 	}else{
 		J[2] <- J[2] + 1
 	}
-	hal.frame <- shape2Frame(shp, J = J, bb = bb, projstring = msproj)	
+	hal.frame <- shape2Frame(shp, J = J, bb = bb, projstring = msproj)
   }
 	
-	boxes <- which(rowSums(gIntersects(shp, hal.frame, byid = TRUE)) > 0)
-	hal.polys <- hal.frame[boxes,]@polygons
+	hal.fr2 <- rotate.poly(hal.frame, bb)
+	hal.indx <- which(st_intersects(hal.fr2,shp, sparse = FALSE))
+	hal.pts <- st_centroid(hal.frame)[hal.indx,] %>% st_coordinates
 	
 	# Find the corner Halton Pts
-	box.lower <- do.call("rbind", lapply(hal.polys, FUN = function(x){data.frame(t(x@labpt))}))
-	box.lower <- t(apply(box.lower, 1, FUN = function(x){(x - shift.bas)/scale.bas}))
+	box.lower <- t(apply(hal.pts, 1, FUN = function(x){(x - shift.bas)/scale.bas}))
 	A <- GetBoxIndices(box.lower, base, J)
 	halt.rep <- SolveCongruence(A, base, J)	
 	B <- prod(c(2,3)^J)
@@ -230,11 +324,12 @@ masterSample <- function(shp, N = 100, msproj = NULL, bb = NULL, seed = NULL){
     if(k == 0){ seedshift <- seed
     }else seedshift <- endPoint + seed
     pts <- RSHalton(n = draw, seeds = seedshift, bases = c(2,3), boxes = halt.rep, J = J)
-    pts[,2] <- pts[,2]*scale.bas[1] + shift.bas[1]
-    pts[,3] <- pts[,3]*scale.bas[2] + shift.bas[2]
-    pts.coord <- SpatialPointsDataFrame(cbind(pts[,2],pts[,3]),proj4string=CRS(msproj), data.frame(SiteID = paste0(pts[,1] + endPoint)))
-    indx <- gIntersects(shp, pts.coord, byid = TRUE)
-    pts.coord <- pts.coord[rowSums(indx) > 0,]
+	xy <- cbind(pts[,2]*scale.bas[1] + shift.bas[1], pts[,3]*scale.bas[2] + shift.bas[2])
+	if(theta != 0) xy <- sweep ( sweep(xy, 2,  cntrd.vec ) %*% rot(-theta), 2,  cntrd.vec, FUN = "+")
+	pts.coord <- st_as_sf(data.frame(SiteID = pts[,1] + endPoint, xy), coords = c(2,3))
+	st_crs(pts.coord) <- st_crs(bb)
+    indx <- st_intersects(shp, pts.coord, sparce = TRUE)
+    pts.coord <- pts.coord[shp,]
     return(pts.coord)
   }
 
@@ -246,16 +341,16 @@ masterSample <- function(shp, N = 100, msproj = NULL, bb = NULL, seed = NULL){
 
   di <- 1
   while(nrow(pts.sample) < N){
-    last.pt <- pts.sample@data$Count[nrow(pts.sample)]
+    last.pt <- pts.sample$SiteID[nrow(pts.sample)]
     new.pts <- getSample(k = di, endPoint = last.pt)
     if(nrow(new.pts) > 0) pts.sample <- rbind(pts.sample, new.pts)
     di <- di + 1
   }
-	
+
   smp <- pts.sample[1:N,]
   if(orig.crs != msproj) 
   {
-	smp <- spTransform(smp, orig.crs)
+	smp <- st_transform(smp, orig.crs)
   }  
   return(smp)
 }
