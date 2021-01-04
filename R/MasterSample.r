@@ -308,7 +308,7 @@ masterSample <- function(shp, N = 100, msproj = NULL, bb = NULL, seed = NULL, nE
   }
 	
 	hal.fr2 <- rotate.poly(hal.frame, bb)
-	hal.indx <- which(st_intersects(hal.fr2,shp, sparse = FALSE))
+	hal.indx <- which(rowSums(st_intersects(hal.fr2, shp, sparse = FALSE)) > 0)
 	hal.pts <- st_centroid(hal.frame)[hal.indx,] %>% st_coordinates
 	
 	# Find the corner Halton Pts
@@ -328,7 +328,6 @@ masterSample <- function(shp, N = 100, msproj = NULL, bb = NULL, seed = NULL, nE
 	if(theta != 0) xy <- sweep ( sweep(xy, 2,  cntrd.vec ) %*% rot(-theta), 2,  cntrd.vec, FUN = "+")
 	pts.coord <- st_as_sf(data.frame(SiteID = pts[,1] + endPoint, xy), coords = c(2,3))
 	st_crs(pts.coord) <- st_crs(bb)
-    indx <- st_intersects(shp, pts.coord, sparce = TRUE)
     pts.coord <- pts.coord[shp,]
     return(pts.coord)
   }
