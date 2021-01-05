@@ -210,6 +210,7 @@ where2Start <- function(J = c(1,1), seeds = c(0,0), bases = c(2,3), boxes = NULL
   return(sort(boxes))
 }
 
+#' @export
 buildMS <- function(shp, d = 2, showOutput = TRUE)
 {
   
