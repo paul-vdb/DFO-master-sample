@@ -72,19 +72,19 @@ rot <- function(a)
 #' @export
 rotate.bb <- function(shp, theta)
 {	
-	if(any(class(shp) == "sf"))
-	{
-		bb <- st_as_sfc(st_bbox(shp))
-	}else if(attr(class(shp), "package") != "sp")
+	if (class(shp)[1] != "sf") 
 	{
 		shp <-  st_as_sf(shp)
 	}
+
+	bb <- st_as_sfc(st_bbox(shp))
+	
 	cntrd <- st_centroid(bb)
 	bb.rot <- (bb - cntrd) * rot(theta) + cntrd
 	bb.new <- st_as_sfc(st_bbox(bb.rot))
 
 	attr(bb.new, "rotation") = theta
-	attr(bb.new, "centroid") = cntrd
+	attr(bb.new, "centroid") = st_coordinates(cntrd)
 	return(bb.new)
 }
 
@@ -210,6 +210,32 @@ where2Start <- function(J = c(1,1), seeds = c(0,0), bases = c(2,3), boxes = NULL
   return(sort(boxes))
 }
 
+buildMS <- function(shp, d = 2, showOutput = TRUE)
+{
+  
+  seed <- floor(runif(d, 0, 10000))
+  # We always use base 2,3
+  base <- c(2,3,5)[1:d]
+
+  # Just work with sf:
+  if (class(shp)[1] != "sf") 
+  {
+    shp <-  st_as_sf(shp)
+  }
+  
+  # Create a Random Rotation:
+  theta <- runif(1, -pi, pi)
+  build.bb <- rotate.bb(shp, theta = theta)
+  st_crs(build.bb) <- st_crs(shp)
+  attr(build.bb, "seed") <- seed
+  
+  if(showOutput){
+	cat("Seed:", seed, "\n")
+	cat("Rotation:", theta, "Radians\n")
+  }
+  return(build.bb)
+}
+
 #' @name getProj
 #' @title Define spatial objects in projection of the master sample.
 #' @description Default projection of the master sample. Needed for consistency for the entire bounding box.
@@ -258,7 +284,7 @@ getRotation <- function()
 #' @title Generate sample points using BAS master sample
 #' @description Generates BAS sample points in a specified sample frame based on New Zealand terrestrial mastersample. Users need to specify 'island' the sample frame is in and how many points are required.
 #' @export
-masterSample <- function(shp, N = 100, msproj = NULL, bb = NULL, seed = NULL, nExtra = 5000){
+masterSample <- function(shp, N = 100, bb = NULL, nExtra = 5000){
   
   # We always use base 2,3
   base <- c(2,3)
@@ -271,15 +297,22 @@ masterSample <- function(shp, N = 100, msproj = NULL, bb = NULL, seed = NULL, nE
 
   # Set up Western Canada Marine Master Sample as default, general for any.
   # bb now includes its rotation as well.
-  if(is.null(msproj)) msproj <- getProj()
-  if(is.null(bb)) bb <- getBB()
-  if(is.null(seed)) seed <- getSeed()
-  
+  if(is.null(bb))
+  {  
+	bb <- getBB()
+	msproj <- getProj()
+	seed <- getSeed()
+  }else{
+	msproj <- st_crs(bb)$proj4string
+	seed <- attr(bb, "seed")[1:2]	# 3rd dimension is not yet supported...
+  }
+	
+  orig.crs <- NULL
   if(st_crs(shp) != st_crs(msproj)) 
   {
 	orig.crs <- st_crs(shp)$proj4string
 	shp <- st_transform(shp, msproj)
-  }
+  }  
   
   #Scale and shift Halton to fit into bounding box
   bb.bounds <- st_bbox(bb)
@@ -287,7 +320,6 @@ masterSample <- function(shp, N = 100, msproj = NULL, bb = NULL, seed = NULL, nE
   shift.bas <- bb.bounds[1:2]
 
   cntrd <- attr(bb, "centroid")
-  cntrd.vec <- st_coordinates(cntrd)
   theta <- attr(bb, "rotation")
 
   #We can use Halton Boxes to speed up code when the polygons are small and all over the place.
@@ -325,13 +357,13 @@ masterSample <- function(shp, N = 100, msproj = NULL, bb = NULL, seed = NULL, nE
     }else seedshift <- endPoint + seed
     pts <- RSHalton(n = draw, seeds = seedshift, bases = c(2,3), boxes = halt.rep, J = J)
 	xy <- cbind(pts[,2]*scale.bas[1] + shift.bas[1], pts[,3]*scale.bas[2] + shift.bas[2])
-	if(theta != 0) xy <- sweep ( sweep(xy, 2,  cntrd.vec ) %*% rot(-theta), 2,  cntrd.vec, FUN = "+")
+	if(theta != 0) xy <- sweep ( sweep(xy, 2,  cntrd, FUN = "-") %*% rot(-theta), 2,  cntrd, FUN = "+")
 	pts.coord <- st_as_sf(data.frame(SiteID = pts[,1] + endPoint, xy), coords = c(2,3))
 	st_crs(pts.coord) <- st_crs(bb)
     pts.coord <- pts.coord[shp,]
     return(pts.coord)
   }
-
+  
   pts.sample <- getSample()
   while(nrow(pts.sample) == 0) {
     draw <- draw * 2
@@ -347,7 +379,7 @@ masterSample <- function(shp, N = 100, msproj = NULL, bb = NULL, seed = NULL, nE
   }
 
   smp <- pts.sample[1:N,]
-  if(orig.crs != msproj) 
+  if(!is.null(orig.crs)) 
   {
 	smp <- st_transform(smp, orig.crs)
   }  
@@ -383,42 +415,80 @@ point2Frame <- function(pt, bb = NULL, base = c(2,3), J = c(2,2), projstring = N
   return(framei)
 }
 
-#' @name lineSamp
-#' @title Generate samples in linear features based on BAS mastersample
+#' This is an internal Master Sample function to assign
+#' indices to points based on the discrete Halton Box overlay.
+#'
+#' @param input An sp or sf spatial points. Accepts either. Or even a data frame with X, Y names.
+#' @param J Integer for number of Halton Boxes to make. If not set it defaults to 100m roughly.
+#' @param bb Master Sample bounding box.
+#' @param base Generally 2,3. If you change it read the literature.
+#' @param seed Master Sample Seed for two bases.
+#' @param s1 Permutation of x orderings (0, 1)
+#' @param s2 Permutation of y orderings (0, 1, 2)
+#'
 #' @export
-# Sampling a linear feature:
-lineSamp <- function (n = 10, x, seed = 0, halt = TRUE) 
-{	
-	cc <- do.call("c", coordinates(x))
-	# Trick here is to figure out where the "breaks" in the lines occur
-	# By index cumulative sum we can identify them
-	brks <- sapply(cc, nrow)	
-	brk <- cumsum(brks[-length(brks)])	
-    cc.df <- do.call("rbind", cc)
-    cc.mat <- as.matrix(cc.df)
-    lengths = LineLength(cc.mat, longlat = FALSE, sum = FALSE)
-	lengths[brk] <- 0	# Remove the length for discontinuities.
-    csl = c(0, cumsum(lengths))
-    maxl = csl[length(csl)]
-    if (halt == TRUE) {
-        pts = lineHalton(n, u = seed) * maxl
-    }
-    else {
-        pts = runif(n) * maxl
-    }
-    int = findInterval(pts, csl, all.inside = TRUE)
-    where = (pts - csl[int])/diff(csl)[int]
-    xy = cc.mat[int, , drop = FALSE] + where * (cc.mat[int + 
-        1, , drop = FALSE] - cc.mat[int, , drop = FALSE])
-    samp <- SpatialPoints(xy, proj4string = CRS(proj4string(x)))
-	return(samp)
-}
+getIndividualBoxIndices <- function(pts, J = NULL, bb)
+{
+	# We always use base 2,3
+	base <- c(2,3)
 
-#' @export
-lineHalton <- function(n = 10, u = 0, b = 5) {
-  k <- u:(u+n-1);    xk <- (k %% b)/b;
-  for (j in 1:(ceiling(logb(u+n,b)) + 2)) {
-    xk <- xk + (floor(k/(b^j)) %% b)/(b^(j+1));
-  }
-  return(xk)
+	# Updating to work for sf only. Start here...
+	if (class(pts)[1] != "sf") 
+	{
+		pts <-  st_as_sf(pts)
+	}
+
+	# Set up Western Canada Marine Master Sample as default, general for any.
+	# bb now includes its rotation as well.
+	if(is.null(bb))
+	{  
+		bb <- getBB()
+		msproj <- getProj()
+		seed <- getSeed()
+	}else{
+		msproj <- st_crs(bb)$proj4string
+		seed <- attr(bb, "seed")[1:2]	# 3rd dimension is not yet supported...
+	}
+
+	orig.crs <- NULL
+	if(st_crs(pts) != st_crs(msproj)) 
+	{
+		orig.crs <- st_crs(pts)$proj4string
+		pts <- st_transform(pts, msproj)
+	}  
+
+	#Scale and shift Halton to fit into bounding box
+	bb.bounds <- st_bbox(bb)
+	scale.bas <- bb.bounds[3:4] - bb.bounds[1:2]
+	shift.bas <- bb.bounds[1:2]
+
+	cntrd <- attr(bb, "centroid")
+	theta <- attr(bb, "rotation")	
+	
+	if(is.null(J)) J <- round(log(scale.bas/100)/log(base), 0)
+
+	B <- prod(base^J)
+	
+	Bx <- base[1]^J[1]
+	By <- base[2]^J[2]
+
+	xy <- st_coordinates(pts)
+	# Rotate pts to the bounding box:
+	if(theta != 0) xy <- sweep ( sweep(xy, 2,  cntrd, FUN = "-") %*% rot(theta), 2,  cntrd, FUN = "+")
+	# Scale to 0-1
+	xy <- cbind((xy[,1] - shift.bas[1])/scale.bas[1], (xy[,2] - shift.bas[2])/scale.bas[2])
+	Axy <- cbind(floor((xy[,1] + 2*.Machine$double.eps)*Bx), floor((xy[,2] + 2*.Machine$double.eps)*By))
+
+	haltonIndex <- SolveCongruence(Axy, base = base, J = J)
+
+	# Adjust everything for the Master Sample random seed.
+	a1 <- seed[1:2] %% base^J
+	boxInit <- SolveCongruence(matrix(a1, ncol = 2), base = base, J = J)
+	
+	# Adjusted index:
+	haltonIndex <- ifelse(haltonIndex < boxInit, B + (haltonIndex - boxInit), haltonIndex - boxInit)
+	# Return the Halton Index for all "pts" in dat that are passed to this function.
+	
+	pts$HaltonIndex <- haltonIndex
+	return(pts)
 }

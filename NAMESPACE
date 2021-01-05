@@ -2,10 +2,9 @@
 
 export(RSHalton)
 export(getBB)
+export(getIndividualBoxIndices)
 export(getProj)
 export(getSeed)
-export(lineHalton)
-export(lineSamp)
 export(makeFrame)
 export(masterSample)
 export(point2Frame)
