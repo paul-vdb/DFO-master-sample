@@ -280,12 +280,11 @@ getRotation <- function()
   return(0)
 }
 
-
-#' @name masterSample
+#' @name masterSampleSelect
 #' @title Generate sample points using BAS master sample
 #' @description Generates BAS sample points in a specified sample frame based on New Zealand terrestrial mastersample. Users need to specify 'island' the sample frame is in and how many points are required.
 #' @export
-masterSample <- function(shp, N = 100, bb = NULL, nExtra = 5000){
+masterSampleSelect <- function(shp, N = 100, bb = NULL, nExtra = 5000, printJ = FALSE){
   
   # We always use base 2,3
   base <- c(2,3)
@@ -328,7 +327,8 @@ masterSample <- function(shp, N = 100, bb = NULL, nExtra = 5000){
   draw <- N + nExtra
   
   J <- c(0, 0)
-  hal.frame <- shape2Frame(shp, J = J, bb = bb, projstring = msproj)
+  shp.rot <- rotate.poly(shp, bb, back = FALSE) # Tricky here to figure out where the shape is on the vertical Halton box.
+  hal.frame <- shape2Frame(shp.rot, J = J, bb = bb, projstring = msproj)
   area.shp <- as.numeric(sum(st_area(shp)))
   while(area.shp < 0.25*as.numeric(st_area(hal.frame))[1])	# Subset again:
   {
@@ -337,7 +337,7 @@ masterSample <- function(shp, N = 100, bb = NULL, nExtra = 5000){
 	}else{
 		J[2] <- J[2] + 1
 	}
-	hal.frame <- shape2Frame(shp, J = J, bb = bb, projstring = msproj)
+	hal.frame <- shape2Frame(shp.rot, J = J, bb = bb, projstring = msproj)
   }
 	
 	hal.fr2 <- rotate.poly(hal.frame, bb)
@@ -351,7 +351,7 @@ masterSample <- function(shp, N = 100, bb = NULL, nExtra = 5000){
 	B <- prod(c(2,3)^J)
 
 	# I like to know how many divisions we had to make...
-	print(J)
+	if(printJ) print(J)
 
   getSample <- function(k = 0, endPoint = 0){
     if(k == 0){ seedshift <- seed
@@ -385,6 +385,32 @@ masterSample <- function(shp, N = 100, bb = NULL, nExtra = 5000){
 	smp <- st_transform(smp, orig.crs)
   }  
   return(smp)
+}
+
+#' @export
+masterSample <- function(shp, N = 100, bb = NULL, stratum = NULL, nExtra = 5000, quiet = FALSE)
+{
+	if(is.null(stratum)){ 
+		smp <- masterSampleSelect(shp = shp, N = N, bb = bb, nExtra = nExtra)
+	}else{
+		if(is.null(names(N))) return("Need design sample size as N = named vector")
+		strata.levels <- names(N)
+		
+		if(!quiet) print(paste0("Stratum: ", strata.levels[1]))
+		k.indx <- which(shp[, stratum, drop = TRUE] == strata.levels[1])
+		smp <- masterSampleSelect(shp[k.indx,], N = N[1], bb = bb, nExtra = nExtra, printJ = !quiet)
+
+		if(length(N) > 1){
+			for(k in 2:length(N))
+			{
+				if(!quiet) print(paste0("Stratum: ", strata.levels[k]))
+				k.indx <- which(shp[, stratum, drop = TRUE] == strata.levels[k])
+				smp.s <- masterSampleSelect(shp = shp[k.indx,], N = N[k], bb = bb, nExtra = nExtra, printJ = !quiet)
+				smp <- rbind(smp, smp.s)
+			}
+		}
+	}
+	return(smp)
 }
 
 #############
