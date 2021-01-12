@@ -15,8 +15,6 @@ library(sp)
 
 data(Fed_MPAs_clipped)
 
-fed.sp <- as_Spatial(Fed_MPAs_clipped)
-
-smp <- masterSample(fed.sp, N = 100)
+smp <- masterSample(Fed_MPAs_clipped, N = 100)
 
 plot(smp)
