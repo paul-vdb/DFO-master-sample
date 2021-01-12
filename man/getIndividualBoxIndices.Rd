@@ -2,27 +2,41 @@
 % Please edit documentation in R/MasterSample.r
 \name{getIndividualBoxIndices}
 \alias{getIndividualBoxIndices}
-\title{This is an internal Master Sample function to assign
-indices to points based on the discrete Halton Box overlay.}
+\title{Get the Halton Box Index for a point.
+If you pass discrete points to this function it will return the Halton Index according to the
+Master Sample as defined by the bounding box. If the points are closer together than the defined box
+size then they are treated as the same sample unit. We do not expect this to be spatially balanced and do
+not recommend using this function alone to select a sample.}
 \usage{
-getIndividualBoxIndices(pts, J = NULL, bb)
+getIndividualBoxIndices(pts, J = NULL, bb, size = 100)
 }
 \arguments{
-\item{J}{Integer for number of Halton Boxes to make. If not set it defaults to 100m roughly.}
+\item{pts}{Shape file as a polygon (sp or sf) to generate the boxes for.}
 
-\item{bb}{Master Sample bounding box.}
+\item{J}{Definition for the number of grid cells of Halton frame.}
 
-\item{input}{An sp or sf spatial points. Accepts either. Or even a data frame with X, Y names.}
+\item{bb}{Bounding box which defines the Master Sample. Default is BC Marine Master Sample.}
 
-\item{base}{Generally 2,3. If you change it read the literature.}
-
-\item{seed}{Master Sample Seed for two bases.}
-
-\item{s1}{Permutation of x orderings (0, 1)}
-
-\item{s2}{Permutation of y orderings (0, 1, 2)}
+\item{size}{Physical target size of Halton boxes (square ish) if J is NULL.}
 }
 \description{
-This is an internal Master Sample function to assign
-indices to points based on the discrete Halton Box overlay.
+Get the Halton Box Index for a point.
+If you pass discrete points to this function it will return the Halton Index according to the
+Master Sample as defined by the bounding box. If the points are closer together than the defined box
+size then they are treated as the same sample unit. We do not expect this to be spatially balanced and do
+not recommend using this function alone to select a sample.
+}
+\examples{
+\dontrun{
+library(bcmaps)
+# If you haven't already installed this:
+install.packages('bcmapsdata', repos='https://bcgov.github.io/drat/')
+library(bcmapsdata)
+cities <- get_layer("bc_cities")
+bb <- buildMS(hydro, d = 2, FALSE)
+# For visibility will make boxes 10 km
+cities.ord <- getIndividualBoxIndices(pts = cities, bb = bb, size = 100)
+plot(st_geometry(cities), pch = 20)
+plot(st_geometry(cities.ord[rank(cities.ord$HaltonIndex) < 15,]), add= TRUE, col = "red", cex = 1.5)
+}
 }

@@ -2,10 +2,23 @@
 % Please edit documentation in R/MasterSample.r
 \name{masterSampleSelect}
 \alias{masterSampleSelect}
-\title{Generate sample points using BAS master sample}
+\title{Generate sample points using BAS master sample. This function has no features and is generally expected to be run by the wrapper function.
+masterSample that ensures all the correct pieces are passed and adds the additional feature of stratification.}
 \usage{
 masterSampleSelect(shp, N = 100, bb = NULL, nExtra = 5000, printJ = FALSE)
 }
+\arguments{
+\item{shp}{Shape file as a polygon to select sites for.}
+
+\item{N}{Number of sites to select.}
+
+\item{bb}{Bounding box which defines the Master Sample. Default is BC Marine Master Sample.}
+
+\item{nExtra}{An efficiency problem of how many extra samples to draw before spatial clipping to shp.}
+
+\item{printJ}{Boolean if you want to see J, how many cuts of space are required to generate the sample efficiently.}
+}
 \description{
-Generates BAS sample points in a specified sample frame based on New Zealand terrestrial mastersample. Users need to specify 'island' the sample frame is in and how many points are required.
+Generate sample points using BAS master sample. This function has no features and is generally expected to be run by the wrapper function.
+masterSample that ensures all the correct pieces are passed and adds the additional feature of stratification.
 }
