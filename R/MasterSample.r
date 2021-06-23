@@ -342,7 +342,7 @@ getIndividualBoxIndices <- function(pts, J = NULL, bb, size = 100)
 	cntrd <- attr(bb, "centroid")
 	theta <- attr(bb, "rotation")	
 	
-	if(is.null(J)) J <- ceiling(log(scale.bas/100)/log(base))
+	if(is.null(J)) J <- ceiling(log(scale.bas/size)/log(base))
 
 	B <- prod(base^J)
 	
