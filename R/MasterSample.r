@@ -86,7 +86,7 @@ masterSampleSelect <- function(shp, N = 100, bb = NULL, nExtra = 5000, printJ = 
 	
 	hal.fr2 <- rotate.shp(hal.frame, bb)
 	hal.indx <- which(rowSums(st_intersects(hal.fr2, shp, sparse = FALSE)) > 0)
-	hal.pts <- st_centroid(hal.frame)[hal.indx,] %>% st_coordinates
+	hal.pts <- (st_centroid(hal.frame) %>% st_coordinates)[hal.indx,]	## Hack to react to changes in sf. Need to get coordinates and then subset now. Fix it better in the future.
 	
 	# Find the corner Halton Pts
 	box.lower <- t(apply(hal.pts, 1, FUN = function(x){(x - shift.bas)/scale.bas}))
