@@ -165,11 +165,11 @@ masterSampleSelect <- function(shp, N = 100, bb = NULL, nExtra = 5000, printJ = 
 #' plot(st_geometry(smp.str), add = T, col= "red", pch = 16)
 #' }
 #' @export
-masterSample <- function(shp, N = 100, bb = NULL, stratum = NULL, nExtra = 10000, quiet = FALSE, inclProb = TRUE)
+masterSample <- function(shp, N = 100, bb = NULL, stratum = NULL, nExtra = 10000, quiet = FALSE, inclSeed = NULL)
 {
   if(is.null(inclSeed)) inclSeed <- floor(runif(1,1,10000))
 	if(is.null(stratum)){
-		smp <- masterSampleSelect(shp = shp, N = N, bb = bb, nExtra = nExtra, inclProb = inclProb, inclSeed = inclSeed)
+		smp <- masterSampleSelect(shp = shp, N = N, bb = bb, nExtra = nExtra, inclSeed = inclSeed)
 	}else{
 		if(is.null(names(N))) return("Need design sample size as N = named vector")
 		strata.levels <- names(N)
@@ -177,7 +177,7 @@ masterSample <- function(shp, N = 100, bb = NULL, stratum = NULL, nExtra = 10000
 		if(!quiet) print(paste0("Stratum: ", strata.levels[1]))
 		k.indx <- which(shp[, stratum, drop = TRUE] == strata.levels[1])
 		shp.stratum <- shp[k.indx,] %>% st_union()	# ? Not sure if this is necessary...
-		smp <- masterSampleSelect(shp.stratum, N = N[1], bb = bb, nExtra = nExtra, printJ = !quiet, inclProb = inclProb, inclSeed)
+		smp <- masterSampleSelect(shp.stratum, N = N[1], bb = bb, nExtra = nExtra, printJ = !quiet, inclSeed)
 		smp[stratum] <- strata.levels[1]
 
 		if(length(N) > 1){
@@ -186,7 +186,7 @@ masterSample <- function(shp, N = 100, bb = NULL, stratum = NULL, nExtra = 10000
 				if(!quiet) print(paste0("Stratum: ", strata.levels[k]))
 				k.indx <- which(shp[, stratum, drop = TRUE] == strata.levels[k])
 				shp.stratum <- shp[k.indx,] %>% st_union()	# Needed?
-				smp.s <- masterSampleSelect(shp = shp.stratum, N = N[k], bb = bb, nExtra = nExtra, printJ = !quiet, inclProb = inclProb, inclSeed = inclSeed)
+				smp.s <- masterSampleSelect(shp = shp.stratum, N = N[k], bb = bb, nExtra = nExtra, printJ = !quiet, inclSeed = inclSeed)
 				smp.s[stratum] <- strata.levels[k]
 				smp <- rbind(smp, smp.s)
 			}
