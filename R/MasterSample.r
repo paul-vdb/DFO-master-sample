@@ -28,12 +28,12 @@ NULL
 #' @param printJ Boolean if you want to see J, how many cuts of space are required to generate the sample efficiently.
 #'
 #' @export
-masterSampleSelect <- function(shp, N = 100, bb = NULL, nExtra = 5000, printJ = FALSE, inclProb = TRUE, inclSeed = NULL){
+masterSampleSelect <- function(shp, N = 100, bb = NULL, nExtra = 5000, printJ = FALSE, inclSeed = NULL){
   
   # We always use base 2,3
   base <- c(2,3)
 
-  if(is.null(inclSeed)) inclSeed <- runif(1,1,10000)
+  if(is.null(inclSeed)) inclSeed <- floor(runif(1,1,10000))
 
   # Updating to work for sf only. Start here...
   if (class(shp)[1] != "sf") 
@@ -102,8 +102,10 @@ masterSampleSelect <- function(shp, N = 100, bb = NULL, nExtra = 5000, printJ = 
   getSample <- function(k = 0, endPoint = 0){
 	seed <- c(seed, inclSeed)
     if(k == 0){ seedshift <- seed
-    }else seedshift <- endPoint + seed
-    pts <- RSHalton(n = draw, seeds = seedshift, bases = c(2,3,5), boxes = halt.rep, J = J)
+    }else {	
+		seedshift <- endPoint + seed
+    }
+	pts <- RSHalton(n = draw, seeds = seedshift, bases = c(2,3,5), boxes = halt.rep, J = J)
 	xy <- cbind(pts[,2]*scale.bas[1] + shift.bas[1], pts[,3]*scale.bas[2] + shift.bas[2])
 	if(theta != 0) xy <- sweep ( sweep(xy, 2,  cntrd, FUN = "-") %*% rot(-theta), 2,  cntrd, FUN = "+")
 	pts.coord <- st_as_sf(data.frame(SiteID = pts[,1] + endPoint, xy, inclProb = pts[,4]), coords = c(2,3))
@@ -111,7 +113,7 @@ masterSampleSelect <- function(shp, N = 100, bb = NULL, nExtra = 5000, printJ = 
     pts.coord <- pts.coord[shp,]
     return(pts.coord)
   }
-  
+    
   pts.sample <- getSample()
   while(nrow(pts.sample) == 0) {
     draw <- draw * 2
@@ -130,7 +132,7 @@ masterSampleSelect <- function(shp, N = 100, bb = NULL, nExtra = 5000, printJ = 
   if(!is.null(orig.crs)) 
   {
 	smp <- st_transform(smp, orig.crs)
-  }  
+  } 
   return(smp)
 }
 
@@ -163,11 +165,11 @@ masterSampleSelect <- function(shp, N = 100, bb = NULL, nExtra = 5000, printJ = 
 #' plot(st_geometry(smp.str), add = T, col= "red", pch = 16)
 #' }
 #' @export
-masterSample <- function(shp, N = 100, bb = NULL, stratum = NULL, nExtra = 10000, quiet = FALSE, inclProb = TRUE, inclSeed = NULL)
+masterSample <- function(shp, N = 100, bb = NULL, stratum = NULL, nExtra = 10000, quiet = FALSE, inclProb = TRUE)
 {
   if(is.null(inclSeed)) inclSeed <- floor(runif(1,1,10000))
 	if(is.null(stratum)){
-		smp <- masterSampleSelect(shp = shp, N = N, bb = bb, nExtra = nExtra, inclProb = inclProb, inclSeed)
+		smp <- masterSampleSelect(shp = shp, N = N, bb = bb, nExtra = nExtra, inclProb = inclProb, inclSeed = inclSeed)
 	}else{
 		if(is.null(names(N))) return("Need design sample size as N = named vector")
 		strata.levels <- names(N)

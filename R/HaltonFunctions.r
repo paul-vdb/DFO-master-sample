@@ -38,7 +38,7 @@ RSHalton <- function(n = 10, seeds = c(0,0),bases = c(2,3), boxes = 0, J = c(0,0
     seeds <- rep(seeds[1],d)
   }
 
-  boxes <- where2Start(boxes = boxes, J = J, seeds = seeds[1:2], bases = bases[1:2])
+  boxes <- where2Start(boxes = boxes, J = J[1:2], seeds = seeds[1:2], bases = bases[1:2])
   B <- prod(bases[1:2]^J)
 
   ########### Main Loop #########################################
