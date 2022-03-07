@@ -166,7 +166,7 @@ masterSampleSelect <- function(shp, N = 100, bb = NULL, nExtra = 5000, printJ = 
 masterSample <- function(shp, N = 100, bb = NULL, stratum = NULL, nExtra = 5000, quiet = FALSE, inclProb = TRUE, inclSeed = NULL)
 {
   if(is.null(inclSeed)) inclSeed <- floor(runif(1,1,10000))
-	if(is.null(stratum)){ 
+	if(is.null(stratum)){
 		smp <- masterSampleSelect(shp = shp, N = N, bb = bb, nExtra = nExtra, inclProb = inclProb, inclSeed)
 	}else{
 		if(is.null(names(N))) return("Need design sample size as N = named vector")
@@ -181,7 +181,8 @@ masterSample <- function(shp, N = 100, bb = NULL, stratum = NULL, nExtra = 5000,
 			{
 				if(!quiet) print(paste0("Stratum: ", strata.levels[k]))
 				k.indx <- which(shp[, stratum, drop = TRUE] == strata.levels[k])
-				smp.s <- masterSampleSelect(shp = shp[k.indx,], N = N[k], bb = bb, nExtra = nExtra, printJ = !quiet, inclProb = inclProb, inclSeed)
+				shp.stratum <- shp[k.indx,] %>% st_union()	# Buggy stratum problem...
+				smp.s <- masterSampleSelect(shp = shp.stratum, N = N[k], bb = bb, nExtra = nExtra, printJ = !quiet, inclProb = inclProb, inclSeed)
 				smp <- rbind(smp, smp.s)
 			}
 		}
