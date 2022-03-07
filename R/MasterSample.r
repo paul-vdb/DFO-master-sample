@@ -92,8 +92,8 @@ masterSampleSelect <- function(shp, N = 100, bb = NULL, nExtra = 5000, printJ = 
 	
 	# Find the corner Halton Pts
 	box.lower <- t(apply(hal.pts, 1, FUN = function(x){(x - shift.bas)/scale.bas}))
-	A <- GetBoxIndices(box.lower, base, J)
-	halt.rep <- SolveCongruence(A, base, J)	
+	A <- BASMasterSample:::GetBoxIndices(box.lower, base, J)
+	halt.rep <- BASMasterSample:::SolveCongruence(A, base, J)	
 	B <- prod(c(2,3)^J)
 
 	# I like to know how many divisions we had to make...
@@ -163,7 +163,7 @@ masterSampleSelect <- function(shp, N = 100, bb = NULL, nExtra = 5000, printJ = 
 #' plot(st_geometry(smp.str), add = T, col= "red", pch = 16)
 #' }
 #' @export
-masterSample <- function(shp, N = 100, bb = NULL, stratum = NULL, nExtra = 5000, quiet = FALSE, inclProb = TRUE, inclSeed = NULL)
+masterSample <- function(shp, N = 100, bb = NULL, stratum = NULL, nExtra = 10000, quiet = FALSE, inclProb = TRUE, inclSeed = NULL)
 {
   if(is.null(inclSeed)) inclSeed <- floor(runif(1,1,10000))
 	if(is.null(stratum)){
@@ -174,15 +174,18 @@ masterSample <- function(shp, N = 100, bb = NULL, stratum = NULL, nExtra = 5000,
 		
 		if(!quiet) print(paste0("Stratum: ", strata.levels[1]))
 		k.indx <- which(shp[, stratum, drop = TRUE] == strata.levels[1])
-		smp <- masterSampleSelect(shp[k.indx,], N = N[1], bb = bb, nExtra = nExtra, printJ = !quiet, inclProb = inclProb, inclSeed)
+		# shp.stratum <- shp[k.indx,] %>% st_union()	# ? Not sure if this is necessary...
+		smp <- masterSampleSelect(shp.stratum, N = N[1], bb = bb, nExtra = nExtra, printJ = !quiet, inclProb = inclProb, inclSeed)
+		smp[stratum] <- strata.levels[1]
 
 		if(length(N) > 1){
 			for(k in 2:length(N))
 			{
 				if(!quiet) print(paste0("Stratum: ", strata.levels[k]))
 				k.indx <- which(shp[, stratum, drop = TRUE] == strata.levels[k])
-				shp.stratum <- shp[k.indx,] %>% st_union()	# Buggy stratum problem...
-				smp.s <- masterSampleSelect(shp = shp.stratum, N = N[k], bb = bb, nExtra = nExtra, printJ = !quiet, inclProb = inclProb, inclSeed)
+				# shp.stratum <- shp[k.indx,] %>% st_union()	# Needed?
+				smp.s <- masterSampleSelect(shp = shp.stratum, N = N[k], bb = bb, nExtra = nExtra, printJ = !quiet, inclProb = inclProb, inclSeed = inclSeed)
+				smp.s[stratum] <- strata.levels[k]
 				smp <- rbind(smp, smp.s)
 			}
 		}
