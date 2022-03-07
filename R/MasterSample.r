@@ -174,7 +174,7 @@ masterSample <- function(shp, N = 100, bb = NULL, stratum = NULL, nExtra = 10000
 		
 		if(!quiet) print(paste0("Stratum: ", strata.levels[1]))
 		k.indx <- which(shp[, stratum, drop = TRUE] == strata.levels[1])
-		# shp.stratum <- shp[k.indx,] %>% st_union()	# ? Not sure if this is necessary...
+		shp.stratum <- shp[k.indx,] %>% st_union()	# ? Not sure if this is necessary...
 		smp <- masterSampleSelect(shp.stratum, N = N[1], bb = bb, nExtra = nExtra, printJ = !quiet, inclProb = inclProb, inclSeed)
 		smp[stratum] <- strata.levels[1]
 
@@ -183,7 +183,7 @@ masterSample <- function(shp, N = 100, bb = NULL, stratum = NULL, nExtra = 10000
 			{
 				if(!quiet) print(paste0("Stratum: ", strata.levels[k]))
 				k.indx <- which(shp[, stratum, drop = TRUE] == strata.levels[k])
-				# shp.stratum <- shp[k.indx,] %>% st_union()	# Needed?
+				shp.stratum <- shp[k.indx,] %>% st_union()	# Needed?
 				smp.s <- masterSampleSelect(shp = shp.stratum, N = N[k], bb = bb, nExtra = nExtra, printJ = !quiet, inclProb = inclProb, inclSeed = inclSeed)
 				smp.s[stratum] <- strata.levels[k]
 				smp <- rbind(smp, smp.s)
